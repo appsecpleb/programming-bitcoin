@@ -1,0 +1,69 @@
+FINITE FIELDS
+
+A finite field is a set of numbers and two operations that satisfy the following:
+
+1 - Closed. If a and b are in the set, then a + b and a * b are in the set.
+2 - Additive Identity. 0 exists and has the property a + 0 = a.
+3 - Mulitiplicative Identity. 1 exists and has the property a * 1 = a.
+4 - Additive Inverse. If a is in the set, -a is in the set such that a + (-a) = 0.
+5 - Mulitiplicative Inverse. If a is in the set and =/= 0, a^-1 is in the set such that a * a^-1 = 1.
+
+These conditions may be met by defining operations such as addition and subtraction in a specific way.
+
+The order of the set, p, is how big the set is. Fields must have an order that is a power of a prime.
+
+The elements of the set may be defined Fp = {0, 1, 2, ... p - 1}.
+
+Addition:
+a +f b = (a + b) % p, where a, b are elements of Fp.
+
+Additive Inverse:
+-fa = (-a) % p
+
+Subtraction:
+a -f b = (a - b) % p
+
+Multipication:
+a *f b = (a * b) % p
+
+Division:
+b^-1 = b^(p - 2)
+
+
+MODULO ARITHMETIC
+
+The modulo operation % is the remainder after division of one number by another, e.g. 7  % 3 = 1. 
+Modulo may also be performed on negative numbers, e.g. -13 % 12 = 11 (-13 = (12 * -2) + 11).
+
+The modulo operator has a useful property that large numbers can be brought down into a small range.
+
+Most operations in finite fields use the modulo operator in some capacity.
+
+
+Fermat's Little Theorem
+
+For all prime p and n > 0: n^(p - 1) % p = 1
+
+
+ELLIPTIC CURVES
+
+Elliptic curves have the form: 
+
+y^2 = x^3 + ax + b
+
+It is similar to a cubic curve but the y^2 term has the effect of making the graph symmetric 
+about the x-axis.
+
+The elliptic curve used in bitcoin is called secp256k1 and it uses the equation:
+
+y^2 = x^3 + 7
+
+
+Point Additon:
+
+An operation performed on two points along an elliptic curve resulting in a third point.
+
+For every elliptic curve, a line will intersect it at either one point or three, except in a few 
+special cases (when the line is vertical or when the line is tangent to the curve). When two points 
+are added, the result is the third point along the line reflected over the x-axis. Point addition 
+is difficult to predict, it is nonlinear. 
