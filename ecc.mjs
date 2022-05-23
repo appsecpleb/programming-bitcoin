@@ -313,28 +313,27 @@ export class Point {
         if (this.equals(other)) {
           // If point is vertical, return the point at infinity
           if (this.y.num === 0) return new Point(null, null, this.a, this.b);
-
           // s = (3x1^2 + a) / 2y1
           // x3 = s^2 - 2x1
           // y3 = s(x1 - x3) - y1
-          const newX = new FieldElement((this.x.num * 3) % this.x.prime, this.x.prime);
-          const newY = new FieldElement((this.y.num * 2) % this.y.prime, this.y.prime);
+          const x1 = this.x.num;
+          const y1 = this.y.num;
+          const prime = this.x.prime;
+          const x1Sq = mod(x1 ** 2, prime);
+          const threeX1Sq = mod(3*x1Sq, prime);
+          const threeX1SqPlusA = mod(threeX1Sq + this.a.num, prime);
+          const twoY1 = mod(2*y1, prime);
+          const s = mod(BigInt(threeX1SqPlusA) * (BigInt(twoY1) ** BigInt(prime - 2)), BigInt(prime)); console.log('s: ', s);
+          const sSq = mod(s ** 2, prime); console.log('sSq: ', sSq);
+          const twoX1 = mod(2*x1, prime); console.log('twoX1: ', twoX1);
+          const x3 = mod(sSq - twoX1, prime); console.log('x3: ', x3);
+          const x1MinusX3 = mod(x1 - x3, prime); console.log('x1MinusX3: ', x1MinusX3)
+          const sTimesX1MinusX3 = mod(s * x1MinusX3, prime); console.log('sTimesX1MinusX3: ', sTimesX1MinusX3);
+          const y3 = mod(sTimesX1MinusX3 - y1, prime); console.log('y3: ', y3);
 
-          // const x1Squared =
+          const newPoint = new Point(new FieldElement(x3, prime), new FieldElement(y3, prime), this.a, this.b); console.log('newPoint: ', newPoint);
 
-          const threeX1 = (this.x.num * 3) % this.x.prime; console.log('threeX1: ', threeX1);
-          const threeX1Squared = (threeX1 ** 2) % this.x.prime; console.log('threeX1Squared: ', threeX1Squared);
-          const threeX1SquaredPlusA = (threeX1Squared + this.a.num) % this.x.prime; console.log('threeX1SquaredPlusA: ', threeX1SquaredPlusA);
-
-          const twoY1 = (this.y.num * 2) % this.y.prime; console.log('twoY1: ', twoY1);
-          
-          const newS = (BigInt((this.x.num)) * (BigInt(this.y.num) ** BigInt(mod(this.y.prime - 2, this.y.prime -1)))) % BigInt(this.y.prime); console.log('newS: ', newS)
-
-          const s = (newX.powerOf(2).add(this.a)).divideBy(newY); console.log('s: ', s);
-          const x = s.powerOf(2).subtract(new FieldElement((this.x.num * 2) % this.x.prime, this.x.prime)); console.log('x: ', x);
-          const y = s.multiplyBy(this.x.subtract(x)).subtract(this.y); console.log('y: ', y);
-
-          return new Point(x, y, this.a, this.b);
+          return newPoint;
         }
     }
   }
