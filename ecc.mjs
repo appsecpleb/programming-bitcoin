@@ -1,6 +1,5 @@
 import { mod } from './utils.mjs';
 
-
 /**
  * Element of a finite field.
  */
@@ -106,8 +105,17 @@ export class FieldElement {
       throw new Error(`Cannot divide two elements from different fields.`);
     }
 
+    let num;
+
+    // Conditionally utilize BigInt type for large values of `other.num ** (this.prime - 2)`
+    if (Number.isSafeInteger(other.num ** this.prime - 2)) {
+      num = mod(this.num * (other.num ** (this.prime - 2)), this.prime);
+    } else {
+      num = mod(BigInt(this.num) * (BigInt(other.num) ** BigInt(this.prime - 2)), BigInt(this.prime));
+    }
+
     return new FieldElement(
-      mod(this.num * (other.num ** (this.prime - 2)), this.prime), 
+      num, 
       this.prime
     );
   }
@@ -121,7 +129,7 @@ export class FieldElement {
   powerOf(exponent) {
     // By Fermat's Little Theorem: a^(p - 1) = 1
     // a^-n = a^-n * a^(p - 1) = a^(p - 1 + n)
-    const n = mod(exponent, this.prime -1)
+    const n = mod(exponent, this.prime -1);
 
     return new FieldElement(
       mod(Math.pow(this.num, n), this.prime), 
@@ -130,15 +138,16 @@ export class FieldElement {
   }
 }
 
-
 /**
- * Point along an elliptic curve.
+ * Point along an elliptic curve over the reals or a finite field.
  */
 export class Point {
   x;
   y;
   a;
   b;
+  curveIsOverReals;
+  curveIsOverFiniteField;
 
   /**
    * Point constructor.
@@ -153,12 +162,45 @@ export class Point {
     this.y = y;
     this.a = a;
     this.b = b;
+    this.curveIsOverReals = typeof(this.x) === 'number'; // `this.x` is not a finite field element
+    this.curveIsOverFiniteField = !this.curveIsOverReals;
 
-    // Point at infinity
+    // If point at infinity
     if (this.x === null && this.y === null) return;
+
+    // Flag to indicate whether point exists on the curve
+    let pointIsOnTheCurve = false;
     
-    if (y**2 != x**3 + a*x + b) {
+    if (this.curveIsOverReals) {
+      if (y**2 === x**3 + a*x + b) {
+        pointIsOnTheCurve = true;
+      }
+    } else if (this.curveIsOverFiniteField) {
+        if (
+          // y^2 % p = (x^3 + ax + b) % p
+          mod(this.y.num**2, this.y.prime) === 
+            mod((this.x.num**3 + this.a.num*this.x.num + this.b.num), this.y.prime)
+        ) {
+          pointIsOnTheCurve = true;
+        }
+    }
+
+    // If point does not exist on the curve
+    if (!pointIsOnTheCurve) {
       throw new Error(`(${x}, ${y}) is not on the curve.`);
+    }
+  }
+
+  /**
+   * Override default object toString method.
+   * 
+   * @returns {string}
+   */
+  toString() {
+    if (this.curveIsOverReals) {
+      return `Point(${this.x}, ${this.y})_${this.a}_${this.b}`;
+    } else if (this.curveIsOverFiniteField) {
+      return `Point(${this.x.num}, ${this.y.num})_${this.a.num}_${this.b.num}`;
     }
   }
 
@@ -169,12 +211,21 @@ export class Point {
    * @returns {boolean} Whether the points are equal.
    */
   equals(other) {
-    return (
-      this.x === other.x && 
-      this.y === other.y && 
-      this.a === other.a && 
-      this.b === other.b
-    )
+    if (this.curveIsOverReals) {
+      return (
+        this.x === other.x && 
+        this.y === other.y && 
+        this.a === other.a && 
+        this.b === other.b
+      )
+    } else if (this.curveIsOverFiniteField) {
+      return (
+        this.x.equals(other.x) && 
+        this.y.equals(other.y) && 
+        this.a.equals(other.a) && 
+        this.b.equals(other.b)
+      )
+    }
   }
 
   /**
@@ -184,45 +235,107 @@ export class Point {
    * @returns {Point} Result of the point addition.
    */
   add(other) {
-    // Ensure points exist along the same curve
-    if (this.a !== other.a || this.b !== other.b) {
-      throw `Points ${this}, ${other} are not on the same curve.`;
-    }
+    if (this.curveIsOverReals) {
+      // Ensure points exist along the same curve
+      if (this.a !== other.a || this.b !== other.b) {
+        throw `Points ${this}, ${other} are not on the same curve.`;
+      }
 
-    // If `this` is the point at infinity, or additive identity
-    if (this.x === null) {
-      return other;
-    } 
-    // If `other` is the point at infinity, or additive identity
-    else if (other.x === null) {
-      return this;
-    }
+      // If `this` is the point at infinity, or additive identity
+      if (this.x === null) {
+        return other;
+      } 
+      // If `other` is the point at infinity, or additive identity
+      else if (other.x === null) {
+        return this;
+      }
 
-    // If points are additive inverses
-    if ((this.x === other.x) && (this.y !== other.y)) {
-      // Return the point at infinity
-      return new Point(null, null, this.a, this.b);
-    }
+      // If points are additive inverses
+      if ((this.x === other.x) && (this.y !== other.y)) {
+        // Return the point at infinity
+        return new Point(null, null, this.a, this.b);
+      }
 
-    // If points have different x coordinates
-    if (this.x !== other.x) {
-      const s = (other.y - this.y) / (other.x - this.x);
-      const x = s**2 - this.x - other.x;
-      const y = s * (this.x - x) - this.y;
+      // If points have different x coordinates
+      if (this.x !== other.x) {
+        const s = (other.y - this.y) / (other.x - this.x);
+        const x = s**2 - this.x - other.x;
+        const y = s * (this.x - x) - this.y;
 
-      return new Point(x, y, this.a, this.b);
-    }
+        return new Point(x, y, this.a, this.b);
+      }
 
-    // If points are the same (line is tangent to the point)
-    if (this.equals(other)) {
-      // If point is vertical, return the point at infinity
-      if (this.y === 0) return new Point(null, null, this.a, this.b);
+      // If points are the same (line is tangent to the point)
+      if (this.equals(other)) {
+        // If point is vertical, return the point at infinity
+        if (this.y === 0) return new Point(null, null, this.a, this.b);
 
-      const s = (3 * (this.x**2) + a) / (2*other.y);
-      const x = s**2 - (2*this.x);
-      const y = s * (this.x - x) - this.y;
+        const s = (3 * (this.x**2) + a) / (2*other.y);
+        const x = s**2 - (2*this.x);
+        const y = s * (this.x - x) - this.y;
 
-      return new Point(x, y, this.a, this.b);
+        return new Point(x, y, this.a, this.b);
+      }
+    } else if (this.curveIsOverFiniteField) {
+        // Ensure points exist along the same curve
+        if (!this.a.equals(other.a) || !this.b.equals(other.b)) {
+          throw `Points ${this}, ${other} are not on the same curve.`;
+        }
+
+        // If `this` is the point at infinity, or additive identity
+        if (this.x === null) {
+          return other;
+        } 
+        // If `other` is the point at infinity, or additive identity
+        else if (other.x === null) {
+          return this;
+        }
+
+        // If points are additive inverses
+        if ((this.x.equals(other.x)) && (!this.y.equals(other.y))) {
+          // Return the point at infinity
+          return new Point(null, null, this.a, this.b);
+        }
+
+        // If points have different x coordinates
+        if (!this.x.equals(other.x)) {
+          // s = (y2 - y1) / (x2 - x1)
+          // x3 = s^2 - x1 - x2
+          // y3 = s(x1 - x3) - y1
+          const s = (other.y.subtract(this.y)).divideBy((other.x.subtract(this.x)));
+          const x = (s.powerOf(2)).subtract(this.x).subtract(other.x);
+          const y = s.multiplyBy((this.x.subtract(x))).subtract(this.y);
+          
+          return new Point(x, y, this.a, this.b);
+        }
+
+        // If points are the same (line is tangent to the point)
+        if (this.equals(other)) {
+          // If point is vertical, return the point at infinity
+          if (this.y.num === 0) return new Point(null, null, this.a, this.b);
+
+          // s = (3x1^2 + a) / 2y1
+          // x3 = s^2 - 2x1
+          // y3 = s(x1 - x3) - y1
+          const newX = new FieldElement((this.x.num * 3) % this.x.prime, this.x.prime);
+          const newY = new FieldElement((this.y.num * 2) % this.y.prime, this.y.prime);
+
+          // const x1Squared =
+
+          const threeX1 = (this.x.num * 3) % this.x.prime; console.log('threeX1: ', threeX1);
+          const threeX1Squared = (threeX1 ** 2) % this.x.prime; console.log('threeX1Squared: ', threeX1Squared);
+          const threeX1SquaredPlusA = (threeX1Squared + this.a.num) % this.x.prime; console.log('threeX1SquaredPlusA: ', threeX1SquaredPlusA);
+
+          const twoY1 = (this.y.num * 2) % this.y.prime; console.log('twoY1: ', twoY1);
+          
+          const newS = (BigInt((this.x.num)) * (BigInt(this.y.num) ** BigInt(mod(this.y.prime - 2, this.y.prime -1)))) % BigInt(this.y.prime); console.log('newS: ', newS)
+
+          const s = (newX.powerOf(2).add(this.a)).divideBy(newY); console.log('s: ', s);
+          const x = s.powerOf(2).subtract(new FieldElement((this.x.num * 2) % this.x.prime, this.x.prime)); console.log('x: ', x);
+          const y = s.multiplyBy(this.x.subtract(x)).subtract(this.y); console.log('y: ', y);
+
+          return new Point(x, y, this.a, this.b);
+        }
     }
   }
 }

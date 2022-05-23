@@ -1,6 +1,5 @@
 import { Point } from '../ecc.mjs';
 
-
 /**
  * Exercise 1
  * 

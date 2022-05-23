@@ -67,3 +67,16 @@ For every elliptic curve, a line will intersect it at either one point or three,
 special cases (when the line is vertical or when the line is tangent to the curve). When two points 
 are added, the result is the third point along the line reflected over the x-axis. Point addition 
 is difficult to predict, it is nonlinear. 
+
+
+ELLIPTIC CURVE CRYPTOGRAPHY
+
+Elliptic curves can also be drawn over finite fields.
+
+We can verify the point (17, 64) is on the curve y^2 = x^3 + 7 over F103:
+
+y^2 = 64^2 % 103 = 79
+x^3 + 7 = (17^3 + 7) % 103 = 79
+
+The same point addition equations with addition, subtraction, multipication, division, and 
+exponentiation defined for finite fields still apply.

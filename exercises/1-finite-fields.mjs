@@ -1,7 +1,6 @@
 import { FieldElement } from '../ecc.mjs';
 import { mod } from '../utils.mjs';
 
-
 /**
  * Exercise 1
  * 
