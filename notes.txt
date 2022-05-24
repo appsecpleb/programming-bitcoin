@@ -80,3 +80,19 @@ x^3 + 7 = (17^3 + 7) % 103 = 79
 
 The same point addition equations with addition, subtraction, multipication, division, and 
 exponentiation defined for finite fields still apply.
+
+
+Scalar Multiplication:
+
+(170, 142) + (170, 142) = 2 o (170, 142)
+
+Scalar multiplication is very difficult to predict without actually calculating. Performing scalar 
+multipication is straightforward, but doing the opposite, point division, is not. This is known as the 
+discrete log problem, and is the basis of elliptic curve crypography. Scalar multiplication over elliptic 
+curves is an asymmetric problem. 
+
+At some multiple, we reach the point at infinity:
+
+{ G, 2G, 3G, ... , 4G, nG } where nG = 0
+
+This set is called a finite cyclic group. Groups behave well wrt addition: 2G + 3G = 5G. 

@@ -7,8 +7,6 @@
  * @returns {number} Result of n % m.
  */
 export function mod(n, m) {
-  // console.log(`n: ${n}, m: ${m}`);
-
   // Note: the % operator in javascript is the remainder, not the modulo and does not 
   // handle negative numbers.
   return Number(((n % m) + m) % m);

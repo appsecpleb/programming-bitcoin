@@ -142,8 +142,8 @@ export class FieldElement {
  * Point along an elliptic curve over the reals or a finite field.
  */
 export class Point {
-  x;
-  y;
+  x = null;
+  y = null;
   a;
   b;
   curveIsOverReals;
@@ -162,11 +162,9 @@ export class Point {
     this.y = y;
     this.a = a;
     this.b = b;
+    this.isPointAtInfinity = this.x == null && this.y == null;
     this.curveIsOverReals = typeof(this.x) === 'number'; // `this.x` is not a finite field element
     this.curveIsOverFiniteField = !this.curveIsOverReals;
-
-    // If point at infinity
-    if (this.x === null && this.y === null) return;
 
     // Flag to indicate whether point exists on the curve
     let pointIsOnTheCurve = false;
@@ -177,6 +175,8 @@ export class Point {
       }
     } else if (this.curveIsOverFiniteField) {
         if (
+          // Not the point at infinity
+          !this.isPointAtInfinity && 
           // y^2 % p = (x^3 + ax + b) % p
           mod(this.y.num**2, this.y.prime) === 
             mod((this.x.num**3 + this.a.num*this.x.num + this.b.num), this.y.prime)
@@ -186,7 +186,7 @@ export class Point {
     }
 
     // If point does not exist on the curve
-    if (!pointIsOnTheCurve) {
+    if (!pointIsOnTheCurve && !this.isPointAtInfinity) {
       throw new Error(`(${x}, ${y}) is not on the curve.`);
     }
   }
@@ -194,12 +194,14 @@ export class Point {
   /**
    * Override default object toString method.
    * 
-   * @returns {string}
+   * @returns {string} 
    */
   toString() {
     if (this.curveIsOverReals) {
       return `Point(${this.x}, ${this.y})_${this.a}_${this.b}`;
     } else if (this.curveIsOverFiniteField) {
+      if (this.isPointAtInfinity) return `Point(infinity)`;
+
       return `Point(${this.x.num}, ${this.y.num})_${this.a.num}_${this.b.num}`;
     }
   }
@@ -242,11 +244,11 @@ export class Point {
       }
 
       // If `this` is the point at infinity, or additive identity
-      if (this.x === null) {
+      if (this.x == null) {
         return other;
       } 
       // If `other` is the point at infinity, or additive identity
-      else if (other.x === null) {
+      else if (other.x == null) {
         return this;
       }
 
@@ -283,11 +285,11 @@ export class Point {
         }
 
         // If `this` is the point at infinity, or additive identity
-        if (this.x === null) {
+        if (this.x == null) {
           return other;
         } 
         // If `other` is the point at infinity, or additive identity
-        else if (other.x === null) {
+        else if (other.x == null) {
           return this;
         }
 
@@ -313,27 +315,35 @@ export class Point {
         if (this.equals(other)) {
           // If point is vertical, return the point at infinity
           if (this.y.num === 0) return new Point(null, null, this.a, this.b);
+
+          const x1 = this.x.num;
+          const y1 = this.y.num;
+          const a = this.a.num;
+          const prime = this.x.prime;
+
           // s = (3x1^2 + a) / 2y1
           // x3 = s^2 - 2x1
           // y3 = s(x1 - x3) - y1
-          const x1 = this.x.num;
-          const y1 = this.y.num;
-          const prime = this.x.prime;
           const x1Sq = mod(x1 ** 2, prime);
           const threeX1Sq = mod(3*x1Sq, prime);
-          const threeX1SqPlusA = mod(threeX1Sq + this.a.num, prime);
+          const threeX1SqPlusA = mod(threeX1Sq + a, prime);
           const twoY1 = mod(2*y1, prime);
-          const s = mod(BigInt(threeX1SqPlusA) * (BigInt(twoY1) ** BigInt(prime - 2)), BigInt(prime)); console.log('s: ', s);
-          const sSq = mod(s ** 2, prime); console.log('sSq: ', sSq);
-          const twoX1 = mod(2*x1, prime); console.log('twoX1: ', twoX1);
-          const x3 = mod(sSq - twoX1, prime); console.log('x3: ', x3);
-          const x1MinusX3 = mod(x1 - x3, prime); console.log('x1MinusX3: ', x1MinusX3)
-          const sTimesX1MinusX3 = mod(s * x1MinusX3, prime); console.log('sTimesX1MinusX3: ', sTimesX1MinusX3);
-          const y3 = mod(sTimesX1MinusX3 - y1, prime); console.log('y3: ', y3);
+          const s = Number.isSafeInteger(twoY1 ** (prime - 2)) 
+            ? mod(threeX1SqPlusA * (twoY1 ** (prime - 2)), prime) 
+            : mod(BigInt(threeX1SqPlusA) * (BigInt(twoY1) ** BigInt(prime - 2)), BigInt(prime));
+          const sSq = mod(s ** 2, prime);
+          const twoX1 = mod(2*x1, prime);
+          const x3 = mod(sSq - twoX1, prime);
+          const x1MinusX3 = mod(x1 - x3, prime);
+          const sTimesX1MinusX3 = mod(s * x1MinusX3, prime);
+          const y3 = mod(sTimesX1MinusX3 - y1, prime);
 
-          const newPoint = new Point(new FieldElement(x3, prime), new FieldElement(y3, prime), this.a, this.b); console.log('newPoint: ', newPoint);
-
-          return newPoint;
+          return new Point(
+            new FieldElement(x3, prime), 
+            new FieldElement(y3, prime), 
+            this.a, 
+            this.b
+          );
         }
     }
   }
